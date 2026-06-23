@@ -127,7 +127,7 @@ export default function TechSpectrum() {
     >
       {/* Category control tabs */}
       <div className="flex border-b border-neutral-100 mb-4 pb-1 items-center justify-between no-scrollbar select-none">
-        <div className="flex gap-4">
+        <div className="flex gap-4" role="tablist">
           {[
             { id: 'all', label: 'ALL // 全部' },
             { id: 'fullstack', label: 'STACK // 全栈' },
@@ -137,6 +137,8 @@ export default function TechSpectrum() {
             <button
               id={`tab-btn-${tab.id}`}
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`relative pb-2 font-mono text-[10px] tracking-wider transition-all duration-300 whitespace-nowrap px-1 cursor-pointer ${
                 activeTab === tab.id ? 'text-neutral-900 font-bold' : 'text-neutral-400 hover:text-neutral-800'

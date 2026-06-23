@@ -10,25 +10,8 @@ interface GeoMapProps {
 export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Real geographic coordinates
-  const shiyanCoords = { lat: 32.62, lng: 110.79, name: '十堰' };
-  const wuhanCoords = { lat: 30.59, lng: 114.30, name: '武汉' };
-
-  // Faint auxiliary reference landmarks for authentic cartographic background
-  const referenceCities = [
-    { id: 'bj', name: '北京', lng: 116.40, lat: 39.90 },
-    { id: 'sh', name: '上海', lng: 121.47, lat: 31.23 },
-    { id: 'gz', name: '广州', lng: 113.26, lat: 23.13 },
-    { id: 'cd', name: '成都', lng: 104.06, lat: 30.57 }
-  ];
-
-  // Geographic center of China for projection mapping
-  const centerLng = 104.0;
-  const centerLat = 36.0;
-
-  // Track projected screen coordinates for UI labeling
-  const [screenCoords, setScreenCoords] = useState({
+  const hoveredRef = useRef(hoveredNode);
+  const screenCoordsRef = useRef({
     shiyan: { x: -999, y: -999 },
     wuhan: { x: -999, y: -999 },
     bj: { x: -999, y: -999 },
@@ -36,8 +19,19 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
     gz: { x: -999, y: -999 },
     cd: { x: -999, y: -999 }
   });
+  const [screenCoords, setScreenCoords] = useState(screenCoordsRef.current);
 
-  // Check if a point lies inside a polygon (ray-casting)
+  const shiyanCoords = { lat: 32.62, lng: 110.79 };
+  const wuhanCoords = { lat: 30.59, lng: 114.30 };
+  const referenceCities = [
+    { id: 'bj', lng: 116.40, lat: 39.90 },
+    { id: 'sh', lng: 121.47, lat: 31.23 },
+    { id: 'gz', lng: 113.26, lat: 23.13 },
+    { id: 'cd', lng: 104.06, lat: 30.57 }
+  ];
+  const centerLng = 104.0;
+  const centerLat = 36.0;
+
   const isPointInPolygon = (point: [number, number], vs: [number, number][]) => {
     const x = point[0], y = point[1];
     let inside = false;
@@ -51,19 +45,17 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
     return inside;
   };
 
+  // Scene init — runs once
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    // Redraw and configure the scene
     const scene = new THREE.Scene();
     scene.background = null;
 
     const width = container.clientWidth;
     const height = container.clientHeight;
-    
-    // Orthographic aspect for high-precision technical map look
     const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
     camera.position.set(0, 0, 8.2);
 
@@ -76,39 +68,30 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Ambient Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
-    scene.add(ambientLight);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.3));
 
-    // Group for dragging and tilt interactions
     const mapGroup = new THREE.Group();
     scene.add(mapGroup);
-
-    // Tilted perspective view for a more holographic tactile look
-    mapGroup.rotation.x = 0.32; 
+    mapGroup.rotation.x = 0.32;
     mapGroup.rotation.y = -0.12;
 
-    // Authentic China Border Contour Array (High precision silhouette)
     const chinaMainBoundary: [number, number][] = [
-      [73.56, 39.26], [75.0, 42.0], [79.0, 44.2], [82.0, 45.1], [87.0, 49.0], 
-      [90.0, 47.8], [94.0, 45.5], [97.0, 42.6], [101.0, 42.6], [105.0, 41.5], 
-      [110.0, 41.5], [113.8, 44.8], [116.5, 45.2], [119.8, 49.3], [123.5, 53.56], 
-      [127.2, 51.5], [131.0, 50.2], [135.0, 48.3], [133.5, 45.8], [131.0, 43.1], 
-      [125.0, 40.2], [121.5, 39.0], [122.5, 37.2], [119.5, 35.1], [121.2, 32.0], 
-      [121.9, 31.0], [120.8, 28.5], [118.0, 24.3], [114.5, 22.0], [110.2, 20.0], 
-      [109.5, 18.2], [108.2, 21.5], [104.8, 22.4], [100.2, 21.1], [98.5, 27.8], 
+      [73.56, 39.26], [75.0, 42.0], [79.0, 44.2], [82.0, 45.1], [87.0, 49.0],
+      [90.0, 47.8], [94.0, 45.5], [97.0, 42.6], [101.0, 42.6], [105.0, 41.5],
+      [110.0, 41.5], [113.8, 44.8], [116.5, 45.2], [119.8, 49.3], [123.5, 53.56],
+      [127.2, 51.5], [131.0, 50.2], [135.0, 48.3], [133.5, 45.8], [131.0, 43.1],
+      [125.0, 40.2], [121.5, 39.0], [122.5, 37.2], [119.5, 35.1], [121.2, 32.0],
+      [121.9, 31.0], [120.8, 28.5], [118.0, 24.3], [114.5, 22.0], [110.2, 20.0],
+      [109.5, 18.2], [108.2, 21.5], [104.8, 22.4], [100.2, 21.1], [98.5, 27.8],
       [94.2, 27.2], [88.5, 27.8], [81.5, 30.2], [78.2, 33.1], [74.1, 37.2], [73.56, 39.26]
     ];
-
     const taiwanBoundary: [number, number][] = [
       [120.0, 22.0], [121.9, 25.1], [121.0, 21.9], [120.0, 22.0]
     ];
-
     const hainanBoundary: [number, number][] = [
       [108.5, 19.5], [110.5, 19.9], [110.0, 18.3], [108.5, 19.5]
     ];
 
-    // Map 2D sphere-like projection onto 3.5D Curved Holographic Panel
     const mapTo3D = (lng: number, lat: number) => {
       const x = (lng - centerLng) * 0.088;
       const y = (lat - centerLat) * 0.098;
@@ -116,147 +99,106 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
       return new THREE.Vector3(x, y, z);
     };
 
-    // Draw glowing borders (Primary and subtle inner details)
+    // Track all disposable resources
+    const geometries: THREE.BufferGeometry[] = [];
+    const materials: THREE.Material[] = [];
+    const disposableObjects: { material?: THREE.Material }[] = [];
+
     const createGlowingBorder = (coords: [number, number][], color: number, opacity: number, linewidth: number = 1.5) => {
       const pts: THREE.Vector3[] = coords.map(c => mapTo3D(c[0], c[1]));
       const geom = new THREE.BufferGeometry().setFromPoints(pts);
-      const mat = new THREE.LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        linewidth
-      });
+      const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity, linewidth });
+      geometries.push(geom);
+      materials.push(mat);
       return new THREE.Line(geom, mat);
     };
 
     const mainBorder = createGlowingBorder(chinaMainBoundary, 0x171717, 0.78, 1.8);
     const innerShadowBorder = createGlowingBorder(chinaMainBoundary, 0xa3a3a3, 0.28, 1.0);
-    innerShadowBorder.position.z -= 0.02; // layered parallax borders
-
+    innerShadowBorder.position.z -= 0.02;
     const taiwanBorder = createGlowingBorder(taiwanBoundary, 0x171717, 0.75, 1.5);
     const hainanBorder = createGlowingBorder(hainanBoundary, 0x171717, 0.75, 1.5);
+    mapGroup.add(mainBorder, innerShadowBorder, taiwanBorder, hainanBorder);
 
-    mapGroup.add(mainBorder);
-    mapGroup.add(innerShadowBorder);
-    mapGroup.add(taiwanBorder);
-    mapGroup.add(hainanBorder);
-
-    // Procedural Point Cloud inside China Territory
+    // Point cloud
     const pointPositions: number[] = [];
-    
-    const stepLng = 0.95;
-    const stepLat = 1.05;
-
-    for (let lng = 73.0; lng <= 135.0; lng += stepLng) {
-      for (let lat = 18.0; lat <= 54.0; lat += stepLat) {
-        const inMain = isPointInPolygon([lng, lat], chinaMainBoundary);
-        const inTaiwan = isPointInPolygon([lng, lat], taiwanBoundary);
-        const inHainan = isPointInPolygon([lng, lat], hainanBoundary);
-
-        if (inMain || inTaiwan || inHainan) {
+    for (let lng = 73.0; lng <= 135.0; lng += 0.95) {
+      for (let lat = 18.0; lat <= 54.0; lat += 1.05) {
+        if (isPointInPolygon([lng, lat], chinaMainBoundary) ||
+            isPointInPolygon([lng, lat], taiwanBoundary) ||
+            isPointInPolygon([lng, lat], hainanBoundary)) {
           const vec = mapTo3D(lng, lat);
           pointPositions.push(vec.x, vec.y, vec.z);
         }
       }
     }
-
     const dotGeometry = new THREE.BufferGeometry();
     dotGeometry.setAttribute('position', new THREE.Float32BufferAttribute(pointPositions, 3));
-    
     const dotMaterial = new THREE.PointsMaterial({
-      color: 0x6e6e6e,
-      size: 0.035,
-      transparent: true,
-      opacity: 0.32,
-      sizeAttenuation: true
+      color: 0x6e6e6e, size: 0.035, transparent: true, opacity: 0.32, sizeAttenuation: true
     });
+    geometries.push(dotGeometry);
+    materials.push(dotMaterial);
+    mapGroup.add(new THREE.Points(dotGeometry, dotMaterial));
 
-    const territoryCloud = new THREE.Points(dotGeometry, dotMaterial);
-    mapGroup.add(territoryCloud);
-
-    // Draw grid graticules (Latitude & Longitude coordinate reference curves)
+    // Graticules
     const drawGraticule = (startLng: number, endLng: number, startLat: number, endLat: number, isLat: boolean) => {
       const pts: THREE.Vector3[] = [];
       if (isLat) {
-        for (let l = startLng; l <= endLng; l += 1) {
-          pts.push(mapTo3D(l, startLat));
-        }
+        for (let l = startLng; l <= endLng; l += 1) pts.push(mapTo3D(l, startLat));
       } else {
-        for (let t = startLat; t <= endLat; t += 1) {
-          pts.push(mapTo3D(startLng, t));
-        }
+        for (let t = startLat; t <= endLat; t += 1) pts.push(mapTo3D(startLng, t));
       }
       const geom = new THREE.BufferGeometry().setFromPoints(pts);
-      const mat = new THREE.LineBasicMaterial({
-        color: 0xd4d4d4,
-        transparent: true,
-        opacity: 0.22
-      });
+      const mat = new THREE.LineBasicMaterial({ color: 0xd4d4d4, transparent: true, opacity: 0.22 });
+      geometries.push(geom);
+      materials.push(mat);
       return new THREE.Line(geom, mat);
     };
+    [20, 25, 30, 35, 40, 45, 50].forEach(lat => mapGroup.add(drawGraticule(70, 138, lat, lat, true)));
+    [80, 90, 100, 110, 120, 130].forEach(lng => mapGroup.add(drawGraticule(lng, lng, 16, 54, false)));
 
-    // Finer coordinates lines for extra realism
-    [20, 25, 30, 35, 40, 45, 50].forEach(lat => {
-      mapGroup.add(drawGraticule(70, 138, lat, lat, true));
-    });
-    [80, 90, 100, 110, 120, 130].forEach(lng => {
-      mapGroup.add(drawGraticule(lng, lng, 16, 54, false));
-    });
-
-    // RingHUD frame overlay
+    // HUD ring
     const ringGeom = new THREE.RingGeometry(3.35, 3.37, 64);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xbfbfbf,
-      transparent: true,
-      opacity: 0.2,
-      side: THREE.DoubleSide
-    });
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+    geometries.push(ringGeom);
+    materials.push(ringMat);
     const hudRing = new THREE.Mesh(ringGeom, ringMat);
     hudRing.position.set(0, 0, -0.25);
     mapGroup.add(hudRing);
 
-    // Node projections (Shiyan & Wuhan - main endpoints)
+    // City nodes
     const pShiyan = mapTo3D(shiyanCoords.lng, shiyanCoords.lat);
     const pWuhan = mapTo3D(wuhanCoords.lng, wuhanCoords.lat);
-
     const nodeGeom = new THREE.SphereGeometry(0.08, 16, 16);
+    geometries.push(nodeGeom);
+
     const shiyanNodeMat = new THREE.MeshBasicMaterial({ color: 0x171717 });
     const wuhanNodeMat = new THREE.MeshBasicMaterial({ color: 0x171717 });
-
+    materials.push(shiyanNodeMat, wuhanNodeMat);
     const meshShiyan = new THREE.Mesh(nodeGeom, shiyanNodeMat);
     meshShiyan.position.copy(pShiyan);
-    mapGroup.add(meshShiyan);
-
     const meshWuhan = new THREE.Mesh(nodeGeom, wuhanNodeMat);
     meshWuhan.position.copy(pWuhan);
-    mapGroup.add(meshWuhan);
+    mapGroup.add(meshShiyan, meshWuhan);
 
-    // Dynamic halos for primary active endpoints
+    // Halos
     const haloGeom = new THREE.RingGeometry(0.05, 0.2, 24);
-    const haloMat1 = new THREE.MeshBasicMaterial({
-      color: 0x171717,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.7
-    });
+    geometries.push(haloGeom);
+    const haloMat1 = new THREE.MeshBasicMaterial({ color: 0x171717, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
     const haloMat2 = haloMat1.clone();
-
+    materials.push(haloMat1, haloMat2);
     const haloShiyan = new THREE.Mesh(haloGeom, haloMat1);
     haloShiyan.position.copy(pShiyan).z += 0.01;
-    mapGroup.add(haloShiyan);
-
     const haloWuhan = new THREE.Mesh(haloGeom, haloMat2);
     haloWuhan.position.copy(pWuhan).z += 0.01;
-    mapGroup.add(haloWuhan);
+    mapGroup.add(haloShiyan, haloWuhan);
 
-    // Auxiliary reference city markers (smaller spheres)
+    // Reference cities
     const refNodeGeom = new THREE.SphereGeometry(0.04, 12, 12);
-    const refNodeMat = new THREE.MeshBasicMaterial({ 
-      color: 0xa3a3a3,
-      transparent: true,
-      opacity: 0.5 
-    });
-
+    const refNodeMat = new THREE.MeshBasicMaterial({ color: 0xa3a3a3, transparent: true, opacity: 0.5 });
+    geometries.push(refNodeGeom);
+    materials.push(refNodeMat);
     const cityPositionsMap: Record<string, THREE.Vector3> = {};
     referenceCities.forEach(city => {
       const p = mapTo3D(city.lng, city.lat);
@@ -266,47 +208,36 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
       mapGroup.add(refMesh);
     });
 
-    // Orbit Arc trajectory curve (Bezier)
-    const middlePoint = new THREE.Vector3()
-      .addVectors(pShiyan, pWuhan)
-      .multiplyScalar(0.5);
-    middlePoint.z += 0.45; // High arc line
-
+    // Bezier arc
+    const middlePoint = new THREE.Vector3().addVectors(pShiyan, pWuhan).multiplyScalar(0.5);
+    middlePoint.z += 0.45;
     const bezierCurve = new THREE.QuadraticBezierCurve3(pShiyan, middlePoint, pWuhan);
     const curvePoints = bezierCurve.getPoints(60);
     const curveGeom = new THREE.BufferGeometry().setFromPoints(curvePoints);
-    const curveMat = new THREE.LineBasicMaterial({
-      color: 0xd4d4d4,
-      transparent: true,
-      opacity: 0.65,
-      linewidth: 1.2
-    });
-    const arcRoute = new THREE.Line(curveGeom, curveMat);
-    mapGroup.add(arcRoute);
+    const curveMat = new THREE.LineBasicMaterial({ color: 0xd4d4d4, transparent: true, opacity: 0.65, linewidth: 1.2 });
+    geometries.push(curveGeom);
+    materials.push(curveMat);
+    mapGroup.add(new THREE.Line(curveGeom, curveMat));
 
-    // Multi-packet dual-timeline glow signals to show flow trajectory clearly
+    // Packets
     const PACKET_COUNT = 5;
     const packetGroup = new THREE.Group();
     mapGroup.add(packetGroup);
-
     const packets: THREE.Mesh[] = [];
     const packetGeom = new THREE.SphereGeometry(0.045, 12, 12);
-
+    geometries.push(packetGeom);
     for (let i = 0; i < PACKET_COUNT; i++) {
-      const pMat = new THREE.MeshBasicMaterial({
-        color: 0x171717,
-        transparent: true,
-        opacity: 0.95 - (i * 0.18)
-      });
+      const pMat = new THREE.MeshBasicMaterial({ color: 0x171717, transparent: true, opacity: 0.95 - (i * 0.18) });
+      materials.push(pMat);
       const pMesh = new THREE.Mesh(packetGeom, pMat);
+      disposableObjects.push(pMesh);
       packetGroup.add(pMesh);
       packets.push(pMesh);
     }
 
-    // Interactive GSAP timeline with physics acceleration and deceleration curves
+    // GSAP timeline
     const progressObj = { t: 0 };
     const gsapTimeline = gsap.timeline({ repeat: -1 });
-    
     gsapTimeline.to(progressObj, {
       t: 1.0,
       duration: 2.1,
@@ -317,14 +248,12 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
           const currentT = (progressObj.t - lagOffset + 1.0) % 1.0;
           const pos = bezierCurve.getPointAt(currentT);
           packets[i].position.copy(pos);
-          
-          const scale = 1.0 - (i * 0.16);
-          packets[i].scale.setScalar(Math.max(0.25, scale));
+          packets[i].scale.setScalar(Math.max(0.25, 1.0 - (i * 0.16)));
         }
       }
     });
 
-    // Unified dragging state & rotations
+    // Drag state
     let isDragging = false;
     let prevMouseX = 0;
     let prevMouseY = 0;
@@ -333,117 +262,81 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
 
     const onMouseDown = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      if (
-        e.clientX >= rect.left && e.clientX <= rect.right &&
-        e.clientY >= rect.top && e.clientY <= rect.bottom
-      ) {
+      if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
         isDragging = true;
         prevMouseX = e.clientX;
         prevMouseY = e.clientY;
       }
     };
-
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      const deltaX = e.clientX - prevMouseX;
-      const deltaY = e.clientY - prevMouseY;
-
+      targetRotationY = Math.max(-0.55, Math.min(0.25, targetRotationY + (e.clientX - prevMouseX) * 0.0035));
+      targetRotationX = Math.max(0.08, Math.min(0.6, targetRotationX + (e.clientY - prevMouseY) * 0.004));
       prevMouseX = e.clientX;
       prevMouseY = e.clientY;
-
-      targetRotationY += deltaX * 0.0035;
-      targetRotationX += deltaY * 0.004;
-      targetRotationX = Math.max(0.08, Math.min(targetRotationX, 0.6));
-      targetRotationY = Math.max(-0.55, Math.min(targetRotationY, 0.25));
     };
+    const onMouseUp = () => { isDragging = false; };
 
-    const onMouseUp = () => {
-      isDragging = false;
-    };
-
-    // Mobile specific touch dragging controls
     const onTouchStart = (e: TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
       const touch = e.touches[0];
-      if (
-        touch.clientX >= rect.left && touch.clientX <= rect.right &&
-        touch.clientY >= rect.top && touch.clientY <= rect.bottom
-      ) {
+      if (touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
         isDragging = true;
         prevMouseX = touch.clientX;
         prevMouseY = touch.clientY;
       }
     };
-
     const onTouchMove = (e: TouchEvent) => {
       if (!isDragging || e.touches.length !== 1) return;
       const touch = e.touches[0];
-      const deltaX = touch.clientX - prevMouseX;
-      const deltaY = touch.clientY - prevMouseY;
-
+      targetRotationY = Math.max(-0.55, Math.min(0.25, targetRotationY + (touch.clientX - prevMouseX) * 0.0045));
+      targetRotationX = Math.max(0.08, Math.min(0.6, targetRotationX + (touch.clientY - prevMouseY) * 0.0045));
       prevMouseX = touch.clientX;
       prevMouseY = touch.clientY;
-
-      targetRotationY += deltaX * 0.0045;
-      targetRotationX += deltaY * 0.0045;
-      targetRotationX = Math.max(0.08, Math.min(targetRotationX, 0.6));
-      targetRotationY = Math.max(-0.55, Math.min(targetRotationY, 0.25));
     };
-
-    const onTouchEnd = () => {
-      isDragging = false;
-    };
+    const onTouchEnd = () => { isDragging = false; };
 
     window.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-
     canvas.addEventListener('touchstart', onTouchStart, { passive: true });
     canvas.addEventListener('touchmove', onTouchMove, { passive: true });
     canvas.addEventListener('touchend', onTouchEnd, { passive: true });
 
-    // Technical labeling mapping projection
+    // Screen projection
     const tempProjV = new THREE.Vector3();
-    const updateProjects = () => {
-      if (!container) return;
-      
+    const updateScreenCoords = () => {
       const halfW = container.clientWidth / 2;
       const halfH = container.clientHeight / 2;
 
-      // Project Shiyan
       tempProjV.copy(pShiyan).applyMatrix4(mapGroup.matrixWorld).project(camera);
       const sx = tempProjV.x * halfW + halfW;
       const sy = -tempProjV.y * halfH + halfH;
 
-      // Project Wuhan
       tempProjV.copy(pWuhan).applyMatrix4(mapGroup.matrixWorld).project(camera);
       const wx = tempProjV.x * halfW + halfW;
       const wy = -tempProjV.y * halfH + halfH;
 
-      // Project Auxiliary cities
       const projCities: Record<string, { x: number, y: number }> = {};
       referenceCities.forEach(city => {
         const pVec = cityPositionsMap[city.id];
         if (pVec) {
           tempProjV.copy(pVec).applyMatrix4(mapGroup.matrixWorld).project(camera);
-          projCities[city.id] = {
-            x: tempProjV.x * halfW + halfW,
-            y: -tempProjV.y * halfH + halfH
-          };
+          projCities[city.id] = { x: tempProjV.x * halfW + halfW, y: -tempProjV.y * halfH + halfH };
         }
       });
 
-      setScreenCoords({
+      screenCoordsRef.current = {
         shiyan: { x: sx, y: sy },
         wuhan: { x: wx, y: wy },
         bj: projCities['bj'] || { x: -999, y: -999 },
         sh: projCities['sh'] || { x: -999, y: -999 },
         gz: projCities['gz'] || { x: -999, y: -999 },
         cd: projCities['cd'] || { x: -999, y: -999 }
-      });
+      };
     };
 
-    // Resize container observer
+    // Resize
     const onResize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -454,34 +347,37 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
     const resizeObserver = new ResizeObserver(() => onResize());
     resizeObserver.observe(container);
 
+    // Animation loop — throttled setState for screen coords
     let animationId: number;
     let pulseCount = 0;
+    let frameCount = 0;
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
 
-      // Camera damp smoothing
       mapGroup.rotation.y += (targetRotationY - mapGroup.rotation.y) * 0.08;
       mapGroup.rotation.x += (targetRotationX - mapGroup.rotation.x) * 0.08;
 
-      // Active pulsing states
       pulseCount += 0.055;
       const pulseScale = 1.0 + Math.sin(pulseCount * 2.5) * 0.28;
       const pulseOpacity = 0.65 - Math.sin(pulseCount * 2.5) * 0.32;
 
-      const isShiyaHover = hoveredNode === 'shiyan';
-      const isWuhaHover = hoveredNode === 'wuhan';
+      const h = hoveredRef.current;
+      haloShiyan.scale.setScalar(h === 'shiyan' ? pulseScale * 1.5 : pulseScale);
+      haloMat1.opacity = h === 'shiyan' ? pulseOpacity : pulseOpacity * 0.4;
+      haloWuhan.scale.setScalar(h === 'wuhan' ? pulseScale * 1.5 : pulseScale);
+      haloMat2.opacity = h === 'wuhan' ? pulseOpacity : pulseOpacity * 0.4;
 
-      haloShiyan.scale.setScalar(isShiyaHover ? pulseScale * 1.5 : pulseScale);
-      haloShiyan.material.opacity = isShiyaHover ? pulseOpacity : pulseOpacity * 0.4;
+      updateScreenCoords();
 
-      haloWuhan.scale.setScalar(isWuhaHover ? pulseScale * 1.5 : pulseScale);
-      haloWuhan.material.opacity = isWuhaHover ? pulseOpacity : pulseOpacity * 0.4;
+      // Throttle React setState to ~15fps (every 4 frames at 60fps)
+      frameCount++;
+      if (frameCount % 4 === 0) {
+        setScreenCoords({ ...screenCoordsRef.current });
+      }
 
-      updateProjects();
       renderer.render(scene, camera);
     };
-
     animate();
 
     return () => {
@@ -489,51 +385,39 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
-
       resizeObserver.disconnect();
       gsapTimeline.kill();
+      geometries.forEach(g => g.dispose());
+      materials.forEach(m => m.dispose());
       renderer.dispose();
-      dotGeometry.dispose();
-      dotMaterial.dispose();
-      nodeGeom.dispose();
-      shiyanNodeMat.dispose();
-      wuhanNodeMat.dispose();
-      haloGeom.dispose();
-      haloMat1.dispose();
-      haloMat2.dispose();
-      refNodeGeom.dispose();
-      refNodeMat.dispose();
-      curveGeom.dispose();
-      curveMat.dispose();
-      ringGeom.dispose();
-      ringMat.dispose();
-      packetGeom.dispose();
-      packets.forEach(p => {
-        if (p.material instanceof THREE.Material) p.material.dispose();
-      });
     };
+  }, []);
+
+  // Hover update — lightweight, no scene rebuild
+  useEffect(() => {
+    hoveredRef.current = hoveredNode;
   }, [hoveredNode]);
 
   return (
-    <div 
+    <div
       id="geomap-container-3d"
-      ref={containerRef} 
+      ref={containerRef}
       className="relative w-full h-[190px] xs:h-[220px] sm:h-[270px] md:h-[330px] overflow-hidden no-select bg-transparent rounded-2xl"
-      onTouchStart={(e) => e.stopPropagation()} // PERFECT TOUCH ISOLATION FOR MOBILE DRAGS
+      onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
       onTouchEnd={(e) => e.stopPropagation()}
     >
-      <canvas 
+      <canvas
         id="geomap-canvas-three"
-        ref={canvasRef} 
+        ref={canvasRef}
         className="cursor-zinc active:cursor-grabbing block w-full h-full mx-auto"
+        role="img"
+        aria-label="3D 交互地图，展示十堰到武汉的地理位置轨迹"
       />
 
-      {/* Primary labeled endpoints */}
       {screenCoords.shiyan.x !== -999 && (
         <div
           id="tag-shiyan"
@@ -580,72 +464,23 @@ export default function GeoMap({ hoveredNode, onHoverNode }: GeoMapProps) {
         </div>
       )}
 
-      {/* Auxiliary Cartographic Cities Overlay (Faint layout reference labels) */}
       {screenCoords.bj.x !== -999 && screenCoords.bj.x > 0 && screenCoords.bj.y > 0 && (
-        <div
-          id="tag-ref-bj"
-          style={{
-            position: 'absolute',
-            left: `${screenCoords.bj.x}px`,
-            top: `${screenCoords.bj.y}px`,
-            transform: 'translate(-50%, -110%)',
-            pointerEvents: 'none'
-          }}
-          className="font-mono text-[7px] text-neutral-400 select-none opacity-60"
-        >
-          北京
-        </div>
+        <div style={{ position: 'absolute', left: `${screenCoords.bj.x}px`, top: `${screenCoords.bj.y}px`, transform: 'translate(-50%, -110%)', pointerEvents: 'none' }}
+          className="font-mono text-[7px] text-neutral-400 select-none opacity-60">北京</div>
       )}
-
       {screenCoords.sh.x !== -999 && screenCoords.sh.x > 0 && screenCoords.sh.y > 0 && (
-        <div
-          id="tag-ref-sh"
-          style={{
-            position: 'absolute',
-            left: `${screenCoords.sh.x}px`,
-            top: `${screenCoords.sh.y}px`,
-            transform: 'translate(-50%, -110%)',
-            pointerEvents: 'none'
-          }}
-          className="font-mono text-[7px] text-neutral-400 select-none opacity-60"
-        >
-          上海
-        </div>
+        <div style={{ position: 'absolute', left: `${screenCoords.sh.x}px`, top: `${screenCoords.sh.y}px`, transform: 'translate(-50%, -110%)', pointerEvents: 'none' }}
+          className="font-mono text-[7px] text-neutral-400 select-none opacity-60">上海</div>
       )}
-
       {screenCoords.gz.x !== -999 && screenCoords.gz.x > 0 && screenCoords.gz.y > 0 && (
-        <div
-          id="tag-ref-gz"
-          style={{
-            position: 'absolute',
-            left: `${screenCoords.gz.x}px`,
-            top: `${screenCoords.gz.y}px`,
-            transform: 'translate(-50%, -110%)',
-            pointerEvents: 'none'
-          }}
-          className="font-mono text-[7px] text-neutral-400 select-none opacity-60"
-        >
-          广州
-        </div>
+        <div style={{ position: 'absolute', left: `${screenCoords.gz.x}px`, top: `${screenCoords.gz.y}px`, transform: 'translate(-50%, -110%)', pointerEvents: 'none' }}
+          className="font-mono text-[7px] text-neutral-400 select-none opacity-60">广州</div>
       )}
-
       {screenCoords.cd.x !== -999 && screenCoords.cd.x > 0 && screenCoords.cd.y > 0 && (
-        <div
-          id="tag-ref-cd"
-          style={{
-            position: 'absolute',
-            left: `${screenCoords.cd.x}px`,
-            top: `${screenCoords.cd.y}px`,
-            transform: 'translate(-50%, -110%)',
-            pointerEvents: 'none'
-          }}
-          className="font-mono text-[7px] text-neutral-400 select-none opacity-60"
-        >
-          成都
-        </div>
+        <div style={{ position: 'absolute', left: `${screenCoords.cd.x}px`, top: `${screenCoords.cd.y}px`, transform: 'translate(-50%, -110%)', pointerEvents: 'none' }}
+          className="font-mono text-[7px] text-neutral-400 select-none opacity-60">成都</div>
       )}
 
-      {/* Simplified subtle micro layout telemetry indicator */}
       <div className="absolute bottom-2 left-3 font-mono text-[7px] text-neutral-400 pointer-events-none uppercase tracking-wider">
         MAP_INT: MULTI_DRAG_ORBIT // GSAP_TIMELINE // TG_PROJ
       </div>

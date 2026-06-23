@@ -23,7 +23,7 @@ html, body {
 
 /* Pure-precision 100% Forbidden Italics */
 *, *::before, *::after {
-  font-style: normal !important;
+  font-style: normal;
 }
 
 /* Custom scrollbar reset */
@@ -60,4 +60,13 @@ html, body {
 .no-select {
   user-select: none;
   -webkit-user-drag: none;
+}
+
+/* Hidden scrollbar utility */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
