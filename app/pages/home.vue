@@ -55,6 +55,10 @@ const { data: feed } = await useFetch('/api/feed/blog')
 			<ZLink to="https://github.com/L33Z22L11/homepage-v5" icon="ri:github-line">L33Z22L11/homepage-v5</ZLink>
 			搭建，感谢原作者的开源贡献。
 		</p>
+		<p>
+			博客开发也受到开源社区启发，特别感谢以下项目与作者：<br>
+		</p>
+		<p><ZBadge v-for="item in appConfig.fork" :key="item.link" v-bind="item" /></p>
 	</ZField>
 </div>
 </template>

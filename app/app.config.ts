@@ -28,6 +28,15 @@ export default defineAppConfig({
 		]),
 		],
 
+	// 用于在主页展示下游引用
+	fork: [
+		{
+			img: 'https://github.com/L33Z22L11.png',
+			link: 'https://github.com/L33Z22L11/homepage-v5',
+			text: 'homepage-v5',
+		},
+	],
+
 	nav: [
 		{
 			title: '',
